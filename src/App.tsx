@@ -5,7 +5,7 @@ import './index.css'
 
 function App() {
   return (
-    <div className="dark min-w-full">
+    <div className="dark">
       <Router>
         <Routes>
           <Route path="/" element={<Home />} />

@@ -19,7 +19,6 @@ export const db = getFirestore(app)
 export const storage = getStorage(app)
 export const googleProvider = new GoogleAuthProvider()
 
-// Admin emails - replace with your actual admin emails
 export const ADMIN_EMAILS = [
   'abdulkanton@gmail.com',
   'vowusuansah98@gmail.com',

@@ -125,7 +125,7 @@ export const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen min-w-screen w-full bg-gradient-to-br from-black via-purple-950 to-black">
+    <div className="min-h-screen min-w-screen bg-gradient-to-br from-black via-purple-950 to-black">
       {/* Fixed Header */}
       <header className="sticky top-0 z-50 w-full border-b border-purple-800/30 bg-black/80 backdrop-blur-md">
         <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
