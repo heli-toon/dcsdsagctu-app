@@ -1,8 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { signInWithPopup, signOut, onAuthStateChanged } from 'firebase/auth'
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore'
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { auth, googleProvider, db, storage, ADMIN_EMAILS } from '../lib/firebase'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
@@ -11,6 +7,7 @@ import { Badge } from './ui/Badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/Tabs'
 import type { User, FileItem } from '../lib/types'
 import { formatDate } from '../lib/utils'
+import { supabase, ADMIN_EMAILS } from '../lib/supabase'
 
 export const AdminDashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null)
@@ -40,12 +37,13 @@ export const AdminDashboard: React.FC = () => {
   })
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      if (firebaseUser && ADMIN_EMAILS.includes(firebaseUser.email || '')) {
+    const session = supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user
+      if (user && ADMIN_EMAILS.includes(user.email || '')) {
         setUser({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email || '',
-          displayName: firebaseUser.displayName || '',
+          uid: user.id,
+          email: user.email || '',
+          displayName: user.user_metadata.full_name || user.email || '',
           isAdmin: true
         })
       } else {
@@ -53,8 +51,23 @@ export const AdminDashboard: React.FC = () => {
       }
       setLoading(false)
     })
-
-    return () => unsubscribe()
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const user = session?.user
+      if (user && ADMIN_EMAILS.includes(user.email || '')) {
+        setUser({
+          uid: user.id,
+          email: user.email || '',
+          displayName: user.user_metadata.full_name || user.email || '',
+          isAdmin: true
+        })
+      } else {
+        setUser(null)
+      }
+      setLoading(false)
+    })
+    return () => {
+      listener?.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -66,7 +79,7 @@ export const AdminDashboard: React.FC = () => {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true)
-      await signInWithPopup(auth, googleProvider)
+      await supabase.auth.signInWithOAuth({ provider: 'google' })
     } catch (error) {
       console.error('Login error:', error)
       alert('Login failed. Please try again. 😞')
@@ -77,7 +90,7 @@ export const AdminDashboard: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth)
+      await supabase.auth.signOut()
     } catch (error) {
       console.error('Logout error:', error)
     }
@@ -86,20 +99,17 @@ export const AdminDashboard: React.FC = () => {
   const fetchAllContent = async () => {
     try {
       const collections = ['slides', 'assignments', 'links', 'announcements']
-      const allItems: FileItem[] = []
-
+      let allItems: FileItem[] = []
       for (const collectionName of collections) {
-        const q = query(collection(db, collectionName), orderBy('date', 'desc'))
-        const querySnapshot = await getDocs(q)
-        querySnapshot.forEach((doc) => {
-          allItems.push({ 
-            id: doc.id, 
-            ...doc.data(),
-            type: collectionName 
-          } as FileItem)
-        })
+        const { data, error } = await supabase
+          .from(collectionName)
+          .select('*')
+          .order('date', { ascending: false })
+        if (error) throw error
+        allItems = allItems.concat(
+          (data || []).map((item: any) => ({ ...item, type: collectionName }))
+        )
       }
-
       setAllContent(allItems)
     } catch (error) {
       console.error('Error fetching content:', error)
@@ -109,23 +119,30 @@ export const AdminDashboard: React.FC = () => {
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!uploadForm.file || !user) return
-
     try {
       setUploading(true)
-      
-      const storageRef = ref(storage, `${uploadForm.category}/${Date.now()}_${uploadForm.file.name}`)
-      const snapshot = await uploadBytes(storageRef, uploadForm.file)
-      const downloadURL = await getDownloadURL(snapshot.ref)
+      // Upload file to Supabase Storage
+      const filePath = `${uploadForm.category}/${Date.now()}_${uploadForm.file.name}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('files')
+        .upload(filePath, uploadForm.file)
+      if (uploadError) throw uploadError
+      const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath)
+      const downloadURL = urlData.publicUrl
 
-      await addDoc(collection(db, uploadForm.category), {
-        name: uploadForm.title,
-        fileName: uploadForm.file.name,
-        fileUrl: downloadURL,
-        uploadedBy: user.displayName,
-        date: new Date().toISOString(),
-        dueDate: uploadForm.dueDate || null,
-        type: uploadForm.file.type
-      })
+      // Insert file metadata into table
+      const { error: insertError } = await supabase
+        .from(uploadForm.category)
+        .insert([{
+          name: uploadForm.title,
+          fileName: uploadForm.file.name,
+          fileUrl: downloadURL,
+          uploadedBy: user.displayName,
+          date: new Date().toISOString(),
+          dueDate: uploadForm.dueDate || null,
+          type: uploadForm.file.type
+        }])
+      if (insertError) throw insertError
 
       setUploadForm({
         category: 'slides',
@@ -133,10 +150,8 @@ export const AdminDashboard: React.FC = () => {
         file: null,
         dueDate: ''
       })
-
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
       if (fileInput) fileInput.value = ''
-
       fetchAllContent()
       alert('File uploaded successfully! 🎉')
     } catch (error) {
@@ -150,17 +165,18 @@ export const AdminDashboard: React.FC = () => {
   const handleLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
     try {
-      await addDoc(collection(db, 'links'), {
-        name: linkForm.title,
-        url: linkForm.url,
-        content: linkForm.description,
-        uploadedBy: user.displayName,
-        date: new Date().toISOString(),
-        type: 'link'
-      })
-
+      const { error } = await supabase
+        .from('links')
+        .insert([{
+          name: linkForm.title,
+          url: linkForm.url,
+          content: linkForm.description,
+          uploadedBy: user.displayName,
+          date: new Date().toISOString(),
+          type: 'link'
+        }])
+      if (error) throw error
       setLinkForm({ title: '', url: '', description: '' })
       fetchAllContent()
       alert('Link added successfully! 🔗✨')
@@ -173,16 +189,17 @@ export const AdminDashboard: React.FC = () => {
   const handleAnnouncementSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!user) return
-
     try {
-      await addDoc(collection(db, 'announcements'), {
-        title: announcementForm.title,
-        content: announcementForm.content,
-        uploadedBy: user.displayName,
-        date: new Date().toISOString(),
-        type: 'announcement'
-      })
-
+      const { error } = await supabase
+        .from('announcements')
+        .insert([{
+          title: announcementForm.title,
+          content: announcementForm.content,
+          uploadedBy: user.displayName,
+          date: new Date().toISOString(),
+          type: 'announcement'
+        }])
+      if (error) throw error
       setAnnouncementForm({ title: '', content: '' })
       fetchAllContent()
       alert('Announcement posted successfully! 📢🎉')
@@ -194,9 +211,12 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDelete = async (id: string, type: string) => {
     if (!confirm('Are you sure you want to delete this item? 🗑️')) return
-
     try {
-      await deleteDoc(doc(db, type, id))
+      const { error } = await supabase
+        .from(type)
+        .delete()
+        .eq('id', id)
+      if (error) throw error
       fetchAllContent()
       alert('Item deleted successfully! ✅')
     } catch (error) {

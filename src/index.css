@@ -1,6 +1,4 @@
 @import "tailwindcss";
-@import 'bootstrap-icons/font/bootstrap-icons.css';
-
 @theme {
   --color-background: hsl(0 0% 3.9%);
   --color-foreground: hsl(0 0% 98%);

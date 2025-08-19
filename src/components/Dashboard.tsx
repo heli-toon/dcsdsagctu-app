@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
-import { db } from '../lib/firebase'
+import { supabase } from '../lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card'
 import { Button } from './ui/Button'
 import { Badge } from './ui/Badge'
@@ -52,17 +51,13 @@ export const Dashboard: React.FC = () => {
 
   const fetchRecentAnnouncements = async () => {
     try {
-      const q = query(
-        collection(db, 'announcements'),
-        orderBy('date', 'desc'),
-        limit(2)
-      )
-      const querySnapshot = await getDocs(q)
-      const announcements: FileItem[] = []
-      querySnapshot.forEach((doc) => {
-        announcements.push({ id: doc.id, ...doc.data() } as FileItem)
-      })
-      setRecentAnnouncements(announcements)
+      const { data, error } = await supabase
+        .from('announcements')
+        .select('*')
+        .order('date', { ascending: false })
+        .limit(2)
+      if (error) throw error
+      setRecentAnnouncements(data || [])
     } catch (error) {
       console.error('Error fetching announcements:', error)
     }
@@ -71,15 +66,13 @@ export const Dashboard: React.FC = () => {
   const openFolder = async (folderKey: FolderType) => {
     setLoading(true)
     setCurrentFolder(folderKey)
-    
     try {
-      const q = query(collection(db, folderKey), orderBy('date', 'desc'))
-      const querySnapshot = await getDocs(q)
-      const items: FileItem[] = []
-      querySnapshot.forEach((doc) => {
-        items.push({ id: doc.id, ...doc.data() } as FileItem)
-      })
-      setCurrentItems(items)
+      const { data, error } = await supabase
+        .from(folderKey)
+        .select('*')
+        .order('date', { ascending: false })
+      if (error) throw error
+      setCurrentItems(data || [])
     } catch (error) {
       console.error(`Error fetching ${folderKey}:`, error)
       setCurrentItems([])
