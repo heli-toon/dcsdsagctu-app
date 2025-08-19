@@ -8,17 +8,17 @@ export interface FileItem {
   url?: string
   uploadedby: string
   date: string
-  dueDate?: string
+  duedate?: string
   type: string
-  fileName?: string
-  fileUrl?: string
+  filename?: string
+  fileurl?: string
 }
 
 export interface User {
   uid: string
   email: string
   displayName: string
-  isAdmin: boolean
+  isadmin: boolean
 }
 
 export interface Announcement {

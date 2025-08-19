@@ -117,8 +117,8 @@ export const Dashboard: React.FC = () => {
     
     if (result.url) {
       window.open(result.url, '_blank')
-    } else if (result.fileUrl) {
-      window.open(result.fileUrl, '_blank')
+    } else if (result.fileurl) {
+      window.open(result.fileurl, '_blank')
     }
   }
 
@@ -330,9 +330,9 @@ export const Dashboard: React.FC = () => {
                               <span>{item.url}</span>
                             </a>
                           )}
-                          {item.fileUrl && (
+                          {item.fileurl && (
                             <a
-                              href={item.fileUrl}
+                              href={item.fileurl}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-purple-400 hover:text-purple-300 underline flex items-center gap-1 mb-3"
@@ -350,9 +350,9 @@ export const Dashboard: React.FC = () => {
                               <span>📅</span>
                               <span>{formatDate(item.date)}</span>
                             </span>
-                            {item.dueDate && (
+                            {item.duedate && (
                               <Badge variant="destructive" className="bg-red-500/20 text-red-300">
-                                ⏰ Due: {formatDate(item.dueDate)}
+                                ⏰ Due: {formatDate(item.duedate)}
                               </Badge>
                             )}
                           </div>

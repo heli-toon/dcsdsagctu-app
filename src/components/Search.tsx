@@ -97,7 +97,7 @@ export const Search: React.FC<SearchProps> = ({ onResultClick, className }) => {
       content: 'Content',
       uploader: 'Uploader',
       type: 'Type',
-      fileName: 'File Name',
+      filename: 'File Name',
       url: 'URL'
     }
 

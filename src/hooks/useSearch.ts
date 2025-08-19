@@ -84,9 +84,9 @@ export const useSearch = () => {
         score += 1
         if (!matchedFields.includes('type')) matchedFields.push('type')
       }
-      if (item.fileName && item.fileName.toLowerCase().includes(term)) {
+      if (item.filename && item.filename.toLowerCase().includes(term)) {
         score += 4
-        if (!matchedFields.includes('fileName')) matchedFields.push('fileName')
+        if (!matchedFields.includes('filename')) matchedFields.push('filename')
       }
       if (item.url && item.url.toLowerCase().includes(term)) {
         score += 2

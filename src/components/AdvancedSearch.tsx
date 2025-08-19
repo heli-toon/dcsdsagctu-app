@@ -227,9 +227,9 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                             <i className="bi-calendar"></i>
                             <span>{formatDate(result.date)}</span>
                           </span>
-                          {result.dueDate && (
+                          {result.duedate && (
                             <Badge variant="destructive" className="bg-red-500/20 text-red-300">
-                              Due: {formatDate(result.dueDate)}
+                              Due: {formatDate(result.duedate)}
                             </Badge>
                           )}
                         </div>

@@ -27,7 +27,7 @@ export const AdminDashboard: React.FC = () => {
     category: 'slides',
     title: '',
     files: [] as File[],
-    dueDate: ''
+    duedate: ''
   })
 
   const [linkForm, setLinkForm] = useState({
@@ -49,7 +49,7 @@ export const AdminDashboard: React.FC = () => {
           uid: user.id,
           email: user.email || '',
           displayName: user.user_metadata.full_name || user.email || '',
-          isAdmin: true
+          isadmin: true
         })
       } else {
         setUser(null)
@@ -63,7 +63,7 @@ export const AdminDashboard: React.FC = () => {
           uid: user.id,
           email: user.email || '',
           displayName: user.user_metadata.full_name || user.email || '',
-          isAdmin: true
+          isadmin: true
         })
       } else {
         setUser(null)
@@ -151,11 +151,11 @@ export const AdminDashboard: React.FC = () => {
         const downloadURL = urlData.publicUrl
         uploadedFiles.push({
           name: uploadForm.title || file.name,
-          fileName: file.name,
-          fileUrl: downloadURL,
+          filename: file.name,
+          fileurl: downloadURL,
           uploadedby: user.email,
           date: new Date().toISOString(),
-          dueDate: uploadForm.dueDate || null,
+          duedate: uploadForm.duedate || null,
           type: file.type
         })
       }
@@ -169,7 +169,7 @@ export const AdminDashboard: React.FC = () => {
         category: 'slides',
         title: '',
         files: [],
-        dueDate: ''
+        duedate: ''
       })
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
       if (fileInput) fileInput.value = ''
@@ -465,8 +465,8 @@ export const AdminDashboard: React.FC = () => {
                         <label className="text-purple-300 text-sm mb-2 block">⏰ Due Date (Optional)</label>
                         <Input
                           type="date"
-                          value={uploadForm.dueDate}
-                          onChange={(e) => setUploadForm({...uploadForm, dueDate: e.target.value})}
+                          value={uploadForm.duedate}
+                          onChange={(e) => setUploadForm({...uploadForm, duedate: e.target.value})}
                           className="w-full bg-black/60 border-purple-800/30 text-white px-4 py-3 rounded-lg"
                         />
                       </div>

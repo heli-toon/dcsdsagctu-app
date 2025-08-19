@@ -128,9 +128,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                                 </a>
                               )}
 
-                              {result.fileUrl && (
+                              {result.fileurl && (
                                 <a
-                                  href={result.fileUrl}
+                                  href={result.fileurl}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-purple-400 hover:text-purple-300 underline flex items-center space-x-1 mb-3"
@@ -150,9 +150,9 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                                   <i className="bi-calendar"></i>
                                   <span>{formatDate(result.date)}</span>
                                 </span>
-                                {result.dueDate && (
+                                {result.duedate && (
                                   <Badge variant="destructive" className="bg-red-500/20 text-red-300">
-                                    Due: {formatDate(result.dueDate)}
+                                    Due: {formatDate(result.duedate)}
                                   </Badge>
                                 )}
                               </div>
