@@ -16,12 +16,17 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('upload')
   const [allContent, setAllContent] = useState<FileItem[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [authForm, setAuthForm] = useState({
+    email: '',
+    password: ''
+  })
+  const [authError, setAuthError] = useState<string | null>(null)
 
   // Form states
   const [uploadForm, setUploadForm] = useState({
     category: 'slides',
     title: '',
-    file: null as File | null,
+    files: [] as File[],
     dueDate: ''
   })
 
@@ -37,7 +42,7 @@ export const AdminDashboard: React.FC = () => {
   })
 
   useEffect(() => {
-    const session = supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       const user = session?.user
       if (user && ADMIN_EMAILS.includes(user.email || '')) {
         setUser({
@@ -76,13 +81,27 @@ export const AdminDashboard: React.FC = () => {
     }
   }, [user])
 
-  const handleGoogleLogin = async () => {
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAuthError(null)
+    if (!ADMIN_EMAILS.includes(authForm.email)) {
+      setAuthError('This email is not authorized for admin access.')
+      return
+    }
     try {
       setLoading(true)
-      await supabase.auth.signInWithOAuth({ provider: 'google' })
-    } catch (error) {
-      console.error('Login error:', error)
-      alert('Login failed. Please try again. 😞')
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authForm.email,
+        password: authForm.password
+      })
+      if (error) throw error
+      // User state will be set by useEffect
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'message' in error) {
+        setAuthError((error as { message?: string }).message || 'Login failed. Please try again.')
+      } else {
+        setAuthError('Login failed. Please try again.')
+      }
     } finally {
       setLoading(false)
     }
@@ -107,7 +126,7 @@ export const AdminDashboard: React.FC = () => {
           .order('date', { ascending: false })
         if (error) throw error
         allItems = allItems.concat(
-          (data || []).map((item: any) => ({ ...item, type: collectionName }))
+          (data || []).map((item: FileItem) => ({ ...item, type: collectionName }))
         )
       }
       setAllContent(allItems)
@@ -118,45 +137,47 @@ export const AdminDashboard: React.FC = () => {
 
   const handleFileUpload = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!uploadForm.file || !user) return
+    if (!uploadForm.files.length || !user) return
     try {
       setUploading(true)
-      // Upload file to Supabase Storage
-      const filePath = `${uploadForm.category}/${Date.now()}_${uploadForm.file.name}`
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('files')
-        .upload(filePath, uploadForm.file)
-      if (uploadError) throw uploadError
-      const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath)
-      const downloadURL = urlData.publicUrl
-
-      // Insert file metadata into table
-      const { error: insertError } = await supabase
-        .from(uploadForm.category)
-        .insert([{
-          name: uploadForm.title,
-          fileName: uploadForm.file.name,
+      const uploadedFiles = []
+      for (const file of uploadForm.files) {
+        const filePath = `${uploadForm.category}/${Date.now()}_${file.name}`
+        const { error: uploadError } = await supabase.storage
+          .from('files')
+          .upload(filePath, file)
+        if (uploadError) throw uploadError
+        const { data: urlData } = supabase.storage.from('files').getPublicUrl(filePath)
+        const downloadURL = urlData.publicUrl
+        uploadedFiles.push({
+          name: uploadForm.title || file.name,
+          fileName: file.name,
           fileUrl: downloadURL,
           uploadedBy: user.displayName,
           date: new Date().toISOString(),
           dueDate: uploadForm.dueDate || null,
-          type: uploadForm.file.type
-        }])
+          type: file.type
+        })
+      }
+      // Insert all file metadata at once
+      const { error: insertError } = await supabase
+        .from(uploadForm.category)
+        .insert(uploadedFiles)
       if (insertError) throw insertError
 
       setUploadForm({
         category: 'slides',
         title: '',
-        file: null,
+        files: [],
         dueDate: ''
       })
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
       if (fileInput) fileInput.value = ''
       fetchAllContent()
-      alert('File uploaded successfully! 🎉')
+      alert('File(s) uploaded successfully! 🎉')
     } catch (error) {
       console.error('Upload error:', error)
-      alert('Error uploading file. Please try again. 😞')
+      alert('Error uploading file(s). Please try again. 😞')
     } finally {
       setUploading(false)
     }
@@ -267,28 +288,47 @@ export const AdminDashboard: React.FC = () => {
     return (
       <div className="min-h-screen min-w-screen w-full bg-gradient-to-br from-black via-purple-950 to-black">
         <div className="w-full h-full flex items-center justify-center p-4">
-          <Card className="w-full max-w-md bg-black/40 border-purple-800/30 backdrop-blur-sm">
-            <CardHeader className="text-center space-y-4">
-              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl mx-auto">
+          <Card className="w-full max-w-md bg-black/40 border-purple-800/30 backdrop-blur-sm p-6">
+            <CardHeader className="text-center space-y-4 p-0 pb-3">
+              <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-4xl mx-auto mb-2">
                 🔐
               </div>
               <div>
                 <CardTitle className="text-white text-2xl mb-2">Admin Access 👨‍💼</CardTitle>
                 <p className="text-purple-300">
-                  Sign in with your authorized Google account to access the admin dashboard 🚀
+                  Sign in with your authorized admin email to access the dashboard 🚀
                 </p>
               </div>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <Button
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3 text-lg"
-              >
-                <span className="mr-3">🔍</span>
-                {loading ? 'Signing in... ⏳' : 'Sign in with Google'}
-              </Button>
-              
+            <CardContent className="space-y-6 p-0">
+              <form onSubmit={handleEmailLogin} className="space-y-4">
+                <Input
+                  type="email"
+                  placeholder="Admin Email"
+                  value={authForm.email}
+                  onChange={e => setAuthForm({ ...authForm, email: e.target.value })}
+                  className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
+                  required
+                />
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={authForm.password}
+                  onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+                  className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
+                  required
+                />
+                {authError && (
+                  <div className="text-red-400 text-sm">{authError}</div>
+                )}
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white py-3"
+                >
+                  {loading ? 'Signing in... ⏳' : 'Sign in'}
+                </Button>
+              </form>
               <div className="text-center">
                 <p className="text-purple-400 text-sm mb-2">
                   Only authorized users can access this area 🛡️
@@ -328,8 +368,8 @@ export const AdminDashboard: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="border-purple-500 text-purple-300 hover:bg-purple-500/20 bg-transparent"
-                onClick={() => window.open('/', '_blank')}
+                className="border-purple-500 text-purple-300 hover:bg-purple-500/20 bg-transparent px-4 py-2"
+                onClick={() => window.open('/', '_self')}
               >
                 <span className="mr-1 sm:mr-2">🏠</span>
                 <span className="hidden sm:inline">View Site</span>
@@ -338,7 +378,7 @@ export const AdminDashboard: React.FC = () => {
                 onClick={handleLogout}
                 variant="destructive"
                 size="sm"
-                className="bg-red-500/20 border-red-500 text-red-300 hover:bg-red-500/30"
+                className="bg-red-500/20 border-red-500 text-red-300 hover:bg-red-500/30 px-4 py-2"
               >
                 <span className="mr-1 sm:mr-2">🚪</span>
                 <span className="hidden sm:inline">Logout</span>
@@ -350,24 +390,24 @@ export const AdminDashboard: React.FC = () => {
 
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-black/40 border border-purple-800/30">
+          <TabsList className="grid w-full grid-cols-3 bg-black/40 border border-purple-800/30 rounded-lg">
             <TabsTrigger
               value="upload"
-              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300"
+              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300 px-4 py-3 rounded-md h-full flex items-center justify-center transition-all"
             >
               <span className="mr-1 sm:mr-2">📤</span>
               <span className="hidden sm:inline">Upload</span>
             </TabsTrigger>
             <TabsTrigger
               value="manage"
-              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300"
+              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300 px-4 py-3 rounded-md h-full flex items-center justify-center transition-all"
             >
               <span className="mr-1 sm:mr-2">📁</span>
               <span className="hidden sm:inline">Manage</span>
             </TabsTrigger>
             <TabsTrigger
               value="announcements"
-              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300"
+              className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-white text-purple-300 px-4 py-3 rounded-md h-full flex items-center justify-center transition-all"
             >
               <span className="mr-1 sm:mr-2">📢</span>
               <span className="hidden sm:inline">Announce</span>
@@ -377,14 +417,14 @@ export const AdminDashboard: React.FC = () => {
           <TabsContent value="upload" className="w-full space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* File Upload */}
-              <Card className="bg-black/40 border-purple-800/30">
-                <CardHeader>
+              <Card className="bg-black/40 border-purple-800/30 p-4">
+                <CardHeader className='pl-0 pt-2'>
                   <CardTitle className="text-white flex items-center gap-2">
                     <span>📤</span>
                     <span>Upload Files</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <form onSubmit={handleFileUpload} className="space-y-4">
                     <div>
                       <label className="text-purple-300 text-sm mb-2 block">📂 Category</label>
@@ -392,29 +432,32 @@ export const AdminDashboard: React.FC = () => {
                         title='Select file category'
                         value={uploadForm.category}
                         onChange={(e) => setUploadForm({...uploadForm, category: e.target.value})}
-                        className="w-full bg-black/60 border border-purple-800/30 rounded-md px-3 py-2 text-white"
+                        className="w-full bg-black/60 border border-purple-800/30 rounded-lg px-4 py-3 text-white"
                       >
                         <option value="slides">📊 Slides</option>
                         <option value="assignments">📝 Assignments</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-purple-300 text-sm mb-2 block">📎 File</label>
+                      <label className="text-purple-300 text-sm mb-2 block">📎 File(s)</label>
                       <Input
                         type="file"
-                        onChange={(e) => setUploadForm({...uploadForm, file: e.target.files?.[0] || null})}
-                        className="w-full bg-black/60 border-purple-800/30 text-white file:bg-purple-500/20 file:text-purple-300 file:border-0 file:rounded file:px-3 file:py-1 file:mr-3"
+                        multiple
+                        onChange={(e) => setUploadForm({...uploadForm, files: Array.from(e.target.files || [])})}
+                        className="w-full bg-black/60 border-purple-800/30 text-white file:bg-purple-500/20 file:text-purple-300 file:border-0 file:rounded-lg file:px-4 file:py-2 px-4 py-3 rounded-lg"
                         required
                       />
+                      <div className="text-purple-400 text-xs mt-1">
+                        You can select multiple files.
+                      </div>
                     </div>
                     <div>
-                      <label className="text-purple-300 text-sm mb-2 block">📝 Title</label>
+                      <label className="text-purple-300 text-sm mb-2 block">📝 Title (applies to all files, optional)</label>
                       <Input
                         value={uploadForm.title}
                         onChange={(e) => setUploadForm({...uploadForm, title: e.target.value})}
                         placeholder="Enter file title"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
-                        required
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                       />
                     </div>
                     {uploadForm.category === 'assignments' && (
@@ -424,13 +467,13 @@ export const AdminDashboard: React.FC = () => {
                           type="date"
                           value={uploadForm.dueDate}
                           onChange={(e) => setUploadForm({...uploadForm, dueDate: e.target.value})}
-                          className="w-full bg-black/60 border-purple-800/30 text-white"
+                          className="w-full bg-black/60 border-purple-800/30 text-white px-4 py-3 rounded-lg"
                         />
                       </div>
                     )}
                     <Button 
                       type="submit" 
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3"
                       disabled={uploading}
                     >
                       {uploading ? (
@@ -441,7 +484,7 @@ export const AdminDashboard: React.FC = () => {
                       ) : (
                         <>
                           <span className="mr-2">🚀</span>
-                          Upload File
+                          Upload File{uploadForm.files.length > 1 ? 's' : ''}
                         </>
                       )}
                     </Button>
@@ -450,14 +493,14 @@ export const AdminDashboard: React.FC = () => {
               </Card>
 
               {/* Add Link */}
-              <Card className="bg-black/40 border-purple-800/30">
-                <CardHeader>
+              <Card className="bg-black/40 border-purple-800/30 p-4">
+                <CardHeader className='pl-0 pt-2'>
                   <CardTitle className="text-white flex items-center gap-2">
                     <span>🔗</span>
                     <span>Add Link</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <form onSubmit={handleLinkSubmit} className="space-y-4">
                     <div>
                       <label className="text-purple-300 text-sm mb-2 block">📝 Link Title</label>
@@ -465,7 +508,7 @@ export const AdminDashboard: React.FC = () => {
                         value={linkForm.title}
                         onChange={(e) => setLinkForm({...linkForm, title: e.target.value})}
                         placeholder="Enter link title"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                         required
                       />
                     </div>
@@ -476,7 +519,7 @@ export const AdminDashboard: React.FC = () => {
                         value={linkForm.url}
                         onChange={(e) => setLinkForm({...linkForm, url: e.target.value})}
                         placeholder="https://example.com"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                         required
                       />
                     </div>
@@ -486,13 +529,13 @@ export const AdminDashboard: React.FC = () => {
                         value={linkForm.description}
                         onChange={(e) => setLinkForm({...linkForm, description: e.target.value})}
                         placeholder="Brief description of the link"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                         rows={3}
                       />
                     </div>
                     <Button 
                       type="submit"
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3"
                     >
                       <span className="mr-2">➕</span>
                       Add Link
@@ -503,14 +546,14 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             {/* Create Announcement */}
-            <Card className="bg-black/40 border-purple-800/30">
-              <CardHeader>
+            <Card className="bg-black/40 border-purple-800/30 p-4">
+              <CardHeader className='pl-0 pt-2'>
                 <CardTitle className="text-white flex items-center gap-2">
                   <span>📢</span>
                   <span>Create Announcement</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                     <div className="lg:col-span-2">
@@ -519,14 +562,14 @@ export const AdminDashboard: React.FC = () => {
                         value={announcementForm.title}
                         onChange={(e) => setAnnouncementForm({...announcementForm, title: e.target.value})}
                         placeholder="Announcement title"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                         required
                       />
                     </div>
                     <div className="flex items-end">
                       <Button 
                         type="submit"
-                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                        className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3"
                       >
                         <span className="mr-2">📤</span>
                         Post Announcement
@@ -539,7 +582,7 @@ export const AdminDashboard: React.FC = () => {
                       value={announcementForm.content}
                       onChange={(e) => setAnnouncementForm({...announcementForm, content: e.target.value})}
                       placeholder="Write your announcement here..."
-                      className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 min-h-[100px]"
+                      className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 min-h-[100px] px-4 py-3 rounded-lg"
                       required
                     />
                   </div>
@@ -549,8 +592,8 @@ export const AdminDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="manage" className="w-full space-y-6">
-            <Card className="bg-black/40 border-purple-800/30">
-              <CardHeader>
+            <Card className="bg-black/40 border-purple-800/30 p-4">
+              <CardHeader className='pl-0 pt-2'>
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                   <CardTitle className="text-white flex items-center gap-2">
                     <span>📁</span>
@@ -562,12 +605,12 @@ export const AdminDashboard: React.FC = () => {
                       placeholder="🔍 Search content..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                      className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                     />
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 {filteredContent.length > 0 ? (
                   <div className="space-y-4">
                     {filteredContent.map((item) => (
@@ -599,7 +642,7 @@ export const AdminDashboard: React.FC = () => {
                           <Button
                             size="sm"
                             variant="destructive"
-                            className="bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                            className="bg-red-500/20 text-red-300 hover:bg-red-500/30 px-3 py-2"
                             onClick={() => handleDelete(item.id, item.type)}
                           >
                             <span>🗑️</span>
@@ -626,14 +669,14 @@ export const AdminDashboard: React.FC = () => {
           <TabsContent value="announcements" className="w-full space-y-6">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               {/* Create Announcement Form */}
-              <Card className="bg-black/40 border-purple-800/30">
-                <CardHeader>
+              <Card className="bg-black/40 border-purple-800/30 p-4">
+                <CardHeader className='pl-0 pt-2'>
                   <CardTitle className="text-white flex items-center gap-2">
                     <span>📢</span>
                     <span>Create Announcement</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
                     <div>
                       <label className="text-purple-300 text-sm mb-2 block">📝 Title</label>
@@ -641,7 +684,7 @@ export const AdminDashboard: React.FC = () => {
                         value={announcementForm.title}
                         onChange={(e) => setAnnouncementForm({...announcementForm, title: e.target.value})}
                         placeholder="Announcement title"
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 px-4 py-3 rounded-lg"
                         required
                       />
                     </div>
@@ -651,13 +694,13 @@ export const AdminDashboard: React.FC = () => {
                         value={announcementForm.content}
                         onChange={(e) => setAnnouncementForm({...announcementForm, content: e.target.value})}
                         placeholder="Write your announcement here..."
-                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 min-h-[120px]"
+                        className="w-full bg-black/60 border-purple-800/30 text-white placeholder:text-purple-400 min-h-[120px] px-4 py-3 rounded-lg"
                         required
                       />
                     </div>
                     <Button 
                       type="submit"
-                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 py-3"
                     >
                       <span className="mr-2">📤</span>
                       Post Announcement
@@ -667,14 +710,14 @@ export const AdminDashboard: React.FC = () => {
               </Card>
 
               {/* Recent Announcements */}
-              <Card className="bg-black/40 border-purple-800/30">
-                <CardHeader>
+              <Card className="bg-black/40 border-purple-800/30 p-4">
+                <CardHeader className='pl-0 pt-2'>
                   <CardTitle className="text-white flex items-center gap-2">
                     <span>🕒</span>
                     <span>Recent Announcements</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="p-0">
                   <div className="space-y-4 max-h-80 overflow-y-auto">
                     {allContent
                       .filter(item => item.type === 'announcements')

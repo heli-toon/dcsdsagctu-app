@@ -18,7 +18,7 @@ export const Card: React.FC<CardProps> = ({ className, children, ...props }) => 
 )
 
 export const CardHeader: React.FC<CardProps> = ({ className, children, ...props }) => (
-  <div className={cn('flex flex-col space-y-1.5 p-6', className)} {...props}>
+  <div className={cn('flex flex-col space-y-1.5 p-6 self-center', className)} {...props}>
     {children}
   </div>
 )

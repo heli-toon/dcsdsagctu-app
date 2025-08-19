@@ -144,7 +144,7 @@ export const Dashboard: React.FC = () => {
               <Button
                 variant="outline"
                 className="border-purple-500 text-purple-300 hover:bg-purple-500/20 bg-transparent"
-                onClick={() => window.open('/admin', '_blank')}
+                onClick={() => window.open('/admin', '_self')}
               >
                 <span className="mr-2">🔐</span>
                 Admin Login
@@ -185,7 +185,7 @@ export const Dashboard: React.FC = () => {
               </h2>
               <p className="text-purple-300 text-lg max-w-3xl mx-auto">
                 Access all your course materials, assignments, and announcements in one place. 
-                Navigate through folders just like Google Drive! 📂✨
+                Navigate through folders! 📂✨
               </p>
             </div>
 
