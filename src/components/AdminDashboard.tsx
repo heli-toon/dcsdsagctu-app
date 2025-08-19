@@ -153,7 +153,7 @@ export const AdminDashboard: React.FC = () => {
           name: uploadForm.title || file.name,
           fileName: file.name,
           fileUrl: downloadURL,
-          uploadedBy: user.displayName,
+          uploadedby: user.email,
           date: new Date().toISOString(),
           dueDate: uploadForm.dueDate || null,
           type: file.type
@@ -193,7 +193,7 @@ export const AdminDashboard: React.FC = () => {
           name: linkForm.title,
           url: linkForm.url,
           content: linkForm.description,
-          uploadedBy: user.displayName,
+          uploadedby: user.email,
           date: new Date().toISOString(),
           type: 'link'
         }])
@@ -216,7 +216,7 @@ export const AdminDashboard: React.FC = () => {
         .insert([{
           title: announcementForm.title,
           content: announcementForm.content,
-          uploadedBy: user.displayName,
+          uploadedby: user.email,
           date: new Date().toISOString(),
           type: 'announcement'
         }])
@@ -253,7 +253,7 @@ export const AdminDashboard: React.FC = () => {
     return (
       (item.name || item.title || '').toLowerCase().includes(searchLower) ||
       (item.content || '').toLowerCase().includes(searchLower) ||
-      item.uploadedBy.toLowerCase().includes(searchLower) ||
+      item.uploadedby.toLowerCase().includes(searchLower) ||
       item.type.toLowerCase().includes(searchLower)
     )
   })
@@ -630,7 +630,7 @@ export const AdminDashboard: React.FC = () => {
                               <span>•</span>
                               <span className="flex items-center gap-1">
                                 <span>👤</span>
-                                {item.uploadedBy}
+                                {item.uploadedby}
                               </span>
                             </div>
                           </div>
@@ -737,7 +737,7 @@ export const AdminDashboard: React.FC = () => {
                           <div className="flex items-center justify-between text-xs text-purple-400">
                             <span className="flex items-center gap-1">
                               <span>👤</span>
-                              {announcement.uploadedBy}
+                              {announcement.uploadedby}
                             </span>
                             <span className="flex items-center gap-1">
                               <span>📅</span>

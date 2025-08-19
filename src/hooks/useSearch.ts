@@ -76,7 +76,7 @@ export const useSearch = () => {
         score += 3
         if (!matchedFields.includes('content')) matchedFields.push('content')
       }
-      if (item.uploadedBy?.toLowerCase().includes(term)) {
+      if (item.uploadedby?.toLowerCase().includes(term)) {
         score += 2
         if (!matchedFields.includes('uploader')) matchedFields.push('uploader')
       }
@@ -136,8 +136,8 @@ export const useSearch = () => {
       if (title.includes(query) && title !== query) {
         suggestions.add(item.name || item.title || '')
       }
-      if (item.uploadedBy.toLowerCase().includes(query)) {
-        suggestions.add(item.uploadedBy)
+      if (item.uploadedby.toLowerCase().includes(query)) {
+        suggestions.add(item.uploadedby)
       }
       if (item.type.toLowerCase().includes(query)) {
         suggestions.add(item.type)

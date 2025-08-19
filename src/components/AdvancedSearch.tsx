@@ -31,7 +31,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
 
   const filteredResults = searchResults.filter(result => {
     if (filters.type !== 'all' && result.type !== filters.type) return false
-    if (filters.uploader && !result.uploadedBy.toLowerCase().includes(filters.uploader.toLowerCase())) return false
+    if (filters.uploader && !result.uploadedby.toLowerCase().includes(filters.uploader.toLowerCase())) return false
     if (filters.dateFrom && new Date(result.date) < new Date(filters.dateFrom)) return false
     if (filters.dateTo && new Date(result.date) > new Date(filters.dateTo)) return false
     return true
@@ -40,22 +40,22 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
   const resultsByType = {
     all: filteredResults,
     slides: getResultsByType('slides').filter(result => 
-      (!filters.uploader || result.uploadedBy.toLowerCase().includes(filters.uploader.toLowerCase())) &&
+      (!filters.uploader || result.uploadedby.toLowerCase().includes(filters.uploader.toLowerCase())) &&
       (!filters.dateFrom || new Date(result.date) >= new Date(filters.dateFrom)) &&
       (!filters.dateTo || new Date(result.date) <= new Date(filters.dateTo))
     ),
     assignments: getResultsByType('assignments').filter(result => 
-      (!filters.uploader || result.uploadedBy.toLowerCase().includes(filters.uploader.toLowerCase())) &&
+      (!filters.uploader || result.uploadedby.toLowerCase().includes(filters.uploader.toLowerCase())) &&
       (!filters.dateFrom || new Date(result.date) >= new Date(filters.dateFrom)) &&
       (!filters.dateTo || new Date(result.date) <= new Date(filters.dateTo))
     ),
     links: getResultsByType('links').filter(result => 
-      (!filters.uploader || result.uploadedBy.toLowerCase().includes(filters.uploader.toLowerCase())) &&
+      (!filters.uploader || result.uploadedby.toLowerCase().includes(filters.uploader.toLowerCase())) &&
       (!filters.dateFrom || new Date(result.date) >= new Date(filters.dateFrom)) &&
       (!filters.dateTo || new Date(result.date) <= new Date(filters.dateTo))
     ),
     announcements: getResultsByType('announcements').filter(result => 
-      (!filters.uploader || result.uploadedBy.toLowerCase().includes(filters.uploader.toLowerCase())) &&
+      (!filters.uploader || result.uploadedby.toLowerCase().includes(filters.uploader.toLowerCase())) &&
       (!filters.dateFrom || new Date(result.date) >= new Date(filters.dateFrom)) &&
       (!filters.dateTo || new Date(result.date) <= new Date(filters.dateTo))
     )
@@ -221,7 +221,7 @@ export const AdvancedSearch: React.FC<AdvancedSearchProps> = ({
                         <div className="flex items-center space-x-4 text-sm text-purple-400">
                           <span className="flex items-center space-x-1">
                             <i className="bi-person"></i>
-                            <span>{result.uploadedBy}</span>
+                            <span>{result.uploadedby}</span>
                           </span>
                           <span className="flex items-center space-x-1">
                             <i className="bi-calendar"></i>

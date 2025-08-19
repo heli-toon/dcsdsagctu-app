@@ -208,7 +208,7 @@ export const Search: React.FC<SearchProps> = ({ onResultClick, className }) => {
                         <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-purple-400">
                           <span className="flex items-center gap-1">
                             <span>👤</span>
-                            {result.uploadedBy}
+                            {result.uploadedby}
                           </span>
                           <span className="flex items-center gap-1">
                             <span>📅</span>

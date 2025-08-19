@@ -13,40 +13,47 @@ export const Dashboard: React.FC = () => {
   const [currentItems, setCurrentItems] = useState<FileItem[]>([])
   const [recentAnnouncements, setRecentAnnouncements] = useState<FileItem[]>([])
   const [loading, setLoading] = useState(false)
+  const [folderCounts, setFolderCounts] = useState<Record<FolderType, number>>({
+    slides: 0,
+    assignments: 0,
+    links: 0,
+    announcements: 0,
+  })
 
   const folders = [
     {
       name: "Slides",
       key: "slides" as FolderType,
       emoji: "📊",
-      count: 0,
+      count: folderCounts.slides,
       description: "Lecture slides and presentations",
     },
     {
       name: "Assignments",
       key: "assignments" as FolderType,
       emoji: "📝",
-      count: 0,
+      count: folderCounts.assignments,
       description: "Homework and project assignments",
     },
     {
       name: "Links",
       key: "links" as FolderType,
       emoji: "🔗",
-      count: 0,
+      count: folderCounts.links,
       description: "Useful resources and external links",
     },
     {
       name: "Announcements",
       key: "announcements" as FolderType,
       emoji: "📢",
-      count: 0,
+      count: folderCounts.announcements,
       description: "Important class announcements",
     },
   ]
 
   useEffect(() => {
     fetchRecentAnnouncements()
+    fetchFolderCounts()
   }, [])
 
   const fetchRecentAnnouncements = async () => {
@@ -61,6 +68,25 @@ export const Dashboard: React.FC = () => {
     } catch (error) {
       console.error('Error fetching announcements:', error)
     }
+  }
+
+  const fetchFolderCounts = async () => {
+    const types: FolderType[] = ['slides', 'assignments', 'links', 'announcements']
+    const counts: Record<FolderType, number> = {
+      slides: 0,
+      assignments: 0,
+      links: 0,
+      announcements: 0,
+    }
+    await Promise.all(
+      types.map(async (type) => {
+        const { count } = await supabase
+          .from(type)
+          .select('*', { count: 'exact', head: true })
+        counts[type] = count || 0
+      })
+    )
+    setFolderCounts(counts)
   }
 
   const openFolder = async (folderKey: FolderType) => {
@@ -232,7 +258,7 @@ export const Dashboard: React.FC = () => {
                           <p className="text-purple-200 mb-3">{announcement.content}</p>
                           <p className="text-purple-400 text-sm flex items-center gap-1">
                             <span>👤</span>
-                            By {announcement.uploadedBy}
+                            By {announcement.uploadedby}
                           </p>
                         </div>
                         <Badge variant="outline" className="border-purple-500 text-purple-300 shrink-0">
@@ -318,7 +344,7 @@ export const Dashboard: React.FC = () => {
                           <div className="flex flex-wrap items-center gap-4 text-sm text-purple-400">
                             <span className="flex items-center gap-1">
                               <span>👤</span>
-                              <span>{item.uploadedBy}</span>
+                              <span>{item.uploadedby}</span>
                             </span>
                             <span className="flex items-center gap-1">
                               <span>📅</span>

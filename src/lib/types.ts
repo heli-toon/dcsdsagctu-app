@@ -6,7 +6,7 @@ export interface FileItem {
   title?: string
   content?: string
   url?: string
-  uploadedBy: string
+  uploadedby: string
   date: string
   dueDate?: string
   type: string
@@ -25,7 +25,7 @@ export interface Announcement {
   id: string
   title: string
   content: string
-  uploadedBy: string
+  uploadedby: string
   date: string
   type: "announcement"
 }

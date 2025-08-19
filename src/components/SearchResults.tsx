@@ -144,7 +144,7 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
                               <div className="flex items-center space-x-4 text-sm text-purple-400">
                                 <span className="flex items-center space-x-1">
                                   <i className="bi-person"></i>
-                                  <span>{result.uploadedBy}</span>
+                                  <span>{result.uploadedby}</span>
                                 </span>
                                 <span className="flex items-center space-x-1">
                                   <i className="bi-calendar"></i>
